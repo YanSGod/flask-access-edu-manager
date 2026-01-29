@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家校协同学生监督管理系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --primary: #4f46e5; --primary-hover: #4338ca; --bg: #f3f4f6; --text-main: #1f2937; --accent-success: #10b981; --accent-danger: #ef4444; --accent-warning: #f59e0b; }
+        body { background: var(--bg); font-family: 'Segoe UI', system-ui, sans-serif; color: var(--text-main); }
+        .login-wrap { height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #4f46e5 0%, #8b5cf6 100%); }
+        .login-card { width: 900px; height: 550px; background: rgba(255,255,255,0.98); border-radius: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); display: flex; overflow: hidden; }
+        .login-left { flex: 1; background: var(--primary); display: flex; flex-direction: column; justify-content: center; padding: 40px; color: white; position: relative; overflow: hidden; }
+        .login-left::after { content: ''; position: absolute; top: -50px; right: -50px; width: 200px; height: 200px; background: rgba(255,255,255,0.1); border-radius: 50%; }
+        .login-right { flex: 1; padding: 60px; display: flex; flex-direction: column; justify-content: center; }
+        .sidebar { min-height: 100vh; background: #fff; border-right: 1px solid #e5e7eb; }
+        .nav-link { color: #6b7280; padding: 14px 25px; margin-bottom: 8px; border-radius: 12px; transition: all 0.2s; cursor: pointer; }
+        .nav-link:hover, .nav-link.active { background-color: #eef2ff; color: var(--primary); transform: translateX(5px); }
+        .nav-link.active { font-weight: 700; background-color: #e0e7ff; }
+        .info-card { background: white; border-radius: 16px; padding: 25px; margin-bottom: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); transition: transform 0.2s; }
+        .info-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); }
+        .header-blue { background: white; padding: 20px 30px; border-radius: 16px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .badge-dot { position: absolute; top: 2px; right: 2px; width: 8px; height: 8px; background: var(--accent-danger); border-radius: 50%; border: 2px solid white; }
+        .feature-card { height: 160px; border-radius: 20px; padding: 25px; color: white; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; cursor: pointer; transition: transform 0.2s; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .feature-card:hover { transform: scale(1.02); }
+        .feature-card i { position: absolute; right: -15px; bottom: -25px; font-size: 7rem; opacity: 0.15; transform: rotate(-15deg); }
+        .bg-1 { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+        .bg-2 { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+        .bg-3 { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+        .bg-4 { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); }
+        .hw-list-item { transition: all 0.3s ease; border-left: 4px solid var(--primary); background: #fff; }
+        .hw-list-item.expired { color: #9ca3af; background-color: #f9fafb; border-left-color: #e5e7eb; }
+        .hw-list-item.expired .date-info { display: none; }
+        .hw-list-item.expired .expired-badge { display: inline-block; }
+        .hw-list-item.expired:hover { color: var(--text-main); background-color: #fff; border-left-color: var(--primary); transform: translateX(5px); }
+        .hw-list-item.expired:hover .expired-badge { display: none; }
+        .hw-list-item.expired:hover .date-info { display: inline-block; color: #6b7280; }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: 0; } }
+        .d-none { display: none !important; }
+        .warning-item { border-left: 3px solid var(--accent-danger); background: #fef2f2; padding: 10px; border-radius: 0 8px 8px 0; margin-bottom: 8px; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100">
+        <div id="liveToast" class="toast align-items-center text-white bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body" id="toastMsg">操作成功</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loginSection" class="login-wrap">
+        <div class="login-card fade-in">
+            <div class="login-left">
+                <div class="mb-auto"><i class="bi bi-grid-1x2-fill fs-3"></i></div>
+                <h1 class="fw-bold mb-2">智慧校园</h1>
+                <p class="opacity-75">家校协同 · 数据驱动 · 共同成长</p>
+                <div class="mt-auto small opacity-50">© 2026 YanSGod 河南大学教育学部</div>
+            </div>
+            <div class="login-right">
+                <h3 class="fw-bold mb-4 text-dark">欢迎登录</h3>
+                <form id="loginForm">
+                    <div class="mb-3">
+                        <label class="small text-muted fw-bold mb-1">账号 ID</label>
+                        <input type="text" id="userID" class="form-control form-control-lg bg-light" placeholder="请输入您的ID">
+                    </div>
+                    <div class="mb-3">
+                        <label class="small text-muted fw-bold mb-1">密码</label>
+                        <input type="password" id="password" class="form-control form-control-lg bg-light" placeholder="请输入密码">
+                    </div>
+                    <div class="mb-4">
+                        <label class="small text-muted fw-bold mb-1">身份角色</label>
+                        <select id="role" class="form-select form-select-lg bg-light">
+                            <option value="教师">我是教师</option>
+                            <option value="家长">我是家长</option>
+                        </select>
+                    </div>
+                    <div class="d-flex justify-content-end mb-3">
+                        <a href="#" class="small text-decoration-none" onclick="forgetPwd()">忘记密码?</a>
+                    </div>
+                    <button type="button" onclick="doLogin()" class="btn btn-primary w-100 py-3 fw-bold fs-6">立即登录</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="teacher-dashboard" class="container-fluid d-none">
+        <div class="row">
+            <div class="col-md-2 sidebar p-4 fade-in">
+                <div class="d-flex align-items-center mb-5 text-primary fw-bold fs-4">
+                    <i class="bi bi-grid-1x2-fill me-2"></i> ACCESS
+                </div>
+                <div class="nav flex-column nav-pills">
+                    <a class="nav-link active" onclick="showPanel('home', this)"><i class="bi bi-speedometer2 me-2"></i> 工作台</a>
+                    <a class="nav-link" onclick="showPanel('homework', this)"><i class="bi bi-pencil-square me-2"></i> 作业管理</a>
+                    <a class="nav-link" onclick="showPanel('attendance', this)"><i class="bi bi-calendar-check me-2"></i> 考勤管理</a>
+                    <a class="nav-link" onclick="showPanel('score', this)"><i class="bi bi-graph-up-arrow me-2"></i> 成绩管理</a>
+                    
+                    <div class="mt-5 border-top pt-3">
+                        <a class="nav-link" onclick="openChangePwdModal()"><i class="bi bi-key me-2"></i> 修改密码</a>
+                        <a class="nav-link text-danger" onclick="location.reload()"><i class="bi bi-box-arrow-left me-2"></i> 退出系统</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-10 p-4" style="min-height:100vh">
+                <div class="header-blue fade-in">
+                    <div>
+                        <h4 id="t-welcome" class="fw-bold mb-0 text-dark">欢迎回来</h4>
+                        <small class="text-muted">教师端工作中心</small>
+                    </div>
+                    <div class="d-flex align-items-center gap-4">
+                        <div class="position-relative" onclick="showMsgModal()" style="cursor:pointer">
+                            <i class="bi bi-envelope fs-5 text-secondary"></i>
+                            <span id="bell-dot" class="badge-dot d-none"></span>
+                        </div>
+                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width:40px;height:40px;font-weight:bold">T</div>
+                    </div>
+                </div>
+
+                <div id="t-panel-home" class="fade-in">
+                    <div class="row g-4">
+                        <div class="col-md-8">
+                            <div class="info-card h-100">
+                                <h5 class="fw-bold mb-3">快捷入口</h5>
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <div class="p-3 bg-light rounded-3 text-center border cursor-pointer" onclick="showPanel('homework', document.querySelectorAll('.nav-link')[1])">
+                                            <i class="bi bi-plus-circle text-primary fs-3"></i>
+                                            <div class="mt-2 fw-bold">发布作业</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="p-3 bg-light rounded-3 text-center border cursor-pointer" onclick="showPanel('attendance', document.querySelectorAll('.nav-link')[2])">
+                                            <i class="bi bi-check-circle text-success fs-3"></i>
+                                            <div class="mt-2 fw-bold">录入考勤</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="p-3 bg-light rounded-3 text-center border cursor-pointer" onclick="showPanel('score', document.querySelectorAll('.nav-link')[3])">
+                                            <i class="bi bi-bar-chart text-warning fs-3"></i>
+                                            <div class="mt-2 fw-bold">录入成绩</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="info-card h-100">
+                                <h5 class="fw-bold mb-3 text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>不及格预警 (得分 < 60%)</h5>
+                                <div id="warning-list" style="max-height: 200px; overflow-y: auto;">
+                                    <p class="text-muted small text-center mt-4">暂无预警信息</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="t-panel-homework" class="d-none fade-in">
+                    <div class="info-card">
+                        <h5 class="fw-bold mb-3 border-start border-4 border-primary ps-2">发布新作业</h5>
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-3"><label class="form-label-sm fw-bold small text-muted">选择课程</label><select class="form-select" id="hw_course_select" onchange="document.getElementById('hw_course').value=this.value"><option disabled selected>请选择...</option></select><input type="hidden" id="hw_course"></div>
+                            <div class="col-md-2"><label class="form-label-sm fw-bold small text-muted">布置日期</label><input type="date" class="form-control" id="hw_start_date"></div>
+                            <div class="col-md-2"><label class="form-label-sm fw-bold small text-muted">截止日期</label><input type="date" class="form-control" id="hw_due_date"></div>
+                            <div class="col-md-3"><label class="form-label-sm fw-bold small text-muted">作业内容</label><input type="text" class="form-control" id="hw_content" placeholder="输入作业详情..."></div>
+                            <div class="col-md-2"><button class="btn btn-primary w-100" onclick="postHomework()">发布</button></div>
+                        </div>
+                    </div>
+                    <div class="info-card">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold m-0">作业列表</h5>
+                            <div class="d-flex gap-2">
+                                <select class="form-select form-select-sm" style="width:200px" id="hw_filter_course" onchange="loadHomeworkList()"><option value="">全部课程</option></select>
+                                <button class="btn btn-sm btn-outline-primary" onclick="exportData('homework')"><i class="bi bi-download"></i> 导出报表</button>
+                            </div>
+                        </div>
+                        <table class="table table-hover" id="homeworkTable"><thead class="table-light"><tr><th>ID</th><th>课程</th><th>内容</th><th>起止日期</th><th>操作</th></tr></thead><tbody id="homeworkList"></tbody></table>
+                    </div>
+                </div>
+
+                <div id="t-panel-score" class="d-none fade-in">
+                    <div class="info-card">
+                        <h5 class="fw-bold mb-3 border-start border-4 border-primary ps-2">录入成绩</h5>
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-2">
+                                <label class="form-label-sm fw-bold small text-muted">1. 课程</label>
+                                <select class="form-select" id="score_course_select" onchange="loadStudents(this);document.getElementById('score_course').value=this.value">
+                                    <option disabled selected>请选择...</option>
+                                </select>
+                                <input type="hidden" id="score_course">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label-sm fw-bold small text-muted">2. 学生</label>
+                                <select class="form-select" id="score_student_select" onchange="document.getElementById('score_student').value=this.value">
+                                    <option disabled selected>请先选课程...</option>
+                                </select>
+                                <input type="hidden" id="score_student">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label-sm fw-bold small text-muted">3. 考试名称 (自动匹配满分)</label>
+                                <input class="form-control" list="exam_options" id="score_exam" placeholder="输入或选择考试...">
+                                <datalist id="exam_options"></datalist>
+                            </div>
+                            <div class="col-md-1">
+                                <label class="form-label-sm fw-bold small text-muted">满分</label>
+                                <input type="number" class="form-control" id="score_full" list="full_score_list" value="100">
+                                <datalist id="full_score_list">
+                                    <option value="100"></option>
+                                    <option value="120"></option>
+                                    <option value="150"></option>
+                                </datalist>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label-sm fw-bold small text-muted">得分</label>
+                                <input type="number" class="form-control" id="score_val" placeholder="实际得分">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label-sm fw-bold small text-muted">考试日期</label>
+                                <input type="date" class="form-control" id="score_date"> 
+                            </div>
+                            <div class="col-md-12 mt-3 text-end">
+                                <button class="btn btn-warning text-white px-4" onclick="postScore()">录入成绩</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-7">
+                            <div class="info-card">
+                                <div class="d-flex justify-content-between mb-3 align-items-center">
+                                    <h5 class="m-0">成绩单</h5>
+                                    <div class="d-flex gap-2">
+                                        <select id="score_filter_course" class="form-select form-select-sm" style="width:200px" onchange="loadClassScores()"><option disabled selected>选班级...</option></select>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="exportData('score')"><i class="bi bi-download"></i> 导出</button>
+                                    </div>
+                                </div>
+                                <div style="height:300px;overflow-y:auto"><table class="table table-sm table-hover"><thead><tr><th>日期</th><th>考试</th><th>姓名</th><th>分数/满分</th><th>操作</th></tr></thead><tbody id="scoreList"></tbody></table></div>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="info-card">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="fw-bold m-0">班级成绩分布</h6>
+                                    <select id="chart_exam_filter" class="form-select form-select-sm" style="width:120px" onchange="updateScoreChart()"></select>
+                                </div>
+                                <div class="btn-group btn-group-sm mb-2 w-100" role="group">
+                                    <input type="radio" class="btn-check" name="t_score_type" id="t_raw" autocomplete="off" onchange="updateScoreChart()">
+                                    <label class="btn btn-outline-secondary" for="t_raw">原始分</label>
+                                    <input type="radio" class="btn-check" name="t_score_type" id="t_scaled" autocomplete="off" checked onchange="updateScoreChart()">
+                                    <label class="btn btn-outline-secondary" for="t_scaled">折合分</label>
+                                </div>
+                                <div style="height:220px"><canvas id="scoreDistChart"></canvas></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="t-panel-attendance" class="d-none fade-in">
+                    <div class="info-card">
+                        <h5 class="fw-bold mb-3 border-start border-4 border-primary ps-2">录入考勤</h5>
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-4"><label class="form-label-sm fw-bold small text-muted">1. 选择课程</label><select class="form-select" id="att_course_select" onchange="loadStudents(this);document.getElementById('att_course').value=this.value"><option disabled selected>请选择...</option></select><input type="hidden" id="att_course"></div>
+                            <div class="col-md-4"><label class="form-label-sm fw-bold small text-muted">2. 选择学生</label><select class="form-select" id="att_student_select" onchange="document.getElementById('att_student').value=this.value"><option disabled selected>请先选课程...</option></select><input type="hidden" id="att_student"></div>
+                            <div class="col-md-2"><label class="form-label-sm fw-bold small text-muted">状态</label><select class="form-select" id="att_status"><option>出勤</option><option>缺勤</option><option>迟到</option></select></div>
+                            <div class="col-md-2"><button class="btn btn-success w-100" onclick="postAttendance()">提交</button></div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="info-card h-100">
+                                <div class="d-flex justify-content-between mb-3 align-items-center"><h5 class="m-0 text-dark fw-bold">考勤记录</h5><div class="d-flex gap-2"><select id="att_filter_course" class="form-select form-select-sm" style="width:200px" onchange="loadClassAttendance()"><option disabled selected>选班级...</option></select><button class="btn btn-sm btn-outline-primary" onclick="exportData('attendance')"><i class="bi bi-download"></i> 导出</button></div></div>
+                                <div style="height:300px;overflow-y:auto"><table class="table table-sm table-hover"><thead><tr><th>日期</th><th>姓名</th><th>状态</th><th>操作</th></tr></thead><tbody id="attList"></tbody></table></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4"><div class="info-card"><div style="height:350px"><canvas id="attChart"></canvas></div></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="parent-dashboard" class="d-none container py-5">
+        <div class="d-flex justify-content-between align-items-center mb-5 fade-in">
+            <div>
+                <h4 class="fw-bold m-0">你好，<span id="p-name">家长</span></h4>
+                <small class="text-muted">当前查看：<span id="p-student-name" class="fw-bold text-primary">...</span> <span id="p-student-info"></span></small>
+            </div>
+            <div>
+                <button class="btn btn-outline-secondary btn-sm rounded-pill px-3 me-2" onclick="openChangePwdModal()">修改密码</button>
+                <button class="btn btn-outline-danger btn-sm rounded-pill px-3" onclick="location.reload()">退出登录</button>
+            </div>
+        </div>
+        
+        <div class="row g-4 mb-5 fade-in">
+            <div class="col-md-6"><div class="feature-card bg-1" onclick="showPDetail('att')"><div><h5 class="fw-bold opacity-75">出勤率</h5><h2 class="fw-bold mt-2" id="p-card-att">--%</h2></div><i class="bi bi-calendar-check"></i></div></div>
+            <div class="col-md-6"><div class="feature-card bg-2" onclick="showPDetail('hw')"><div><h5 class="fw-bold opacity-75">未截止作业</h5><h2 class="fw-bold mt-2" id="p-card-hw">--</h2></div><i class="bi bi-journal-bookmark"></i></div></div>
+            <div class="col-md-6"><div class="feature-card bg-3" onclick="showPDetail('score')"><div><h5 class="fw-bold opacity-75">最近成绩</h5><h2 class="fw-bold mt-2" id="p-card-score">--</h2></div><i class="bi bi-graph-up"></i></div></div>
+            <div class="col-md-6"><div class="feature-card bg-4" onclick="showPDetail('comp')"> <div><h5 class="fw-bold opacity-75">综合评价</h5><h2 class="fw-bold mt-2" id="p-card-comp">--</h2></div><i class="bi bi-pie-chart"></i></div></div>
+        </div>
+        
+        <div class="info-card fade-in">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0 border-start border-4 border-primary ps-2">学科成绩走势</h5>
+                <div class="d-flex gap-2">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <input type="radio" class="btn-check" name="p_score_type" id="p_raw" autocomplete="off" onchange="renderParentChart()">
+                        <label class="btn btn-outline-primary" for="p_raw">原始</label>
+                        <input type="radio" class="btn-check" name="p_score_type" id="p_scaled" autocomplete="off" checked onchange="renderParentChart()">
+                        <label class="btn btn-outline-primary" for="p_scaled">折合</label>
+                    </div>
+                    <select id="p_score_filter" class="form-select form-select-sm" style="width: 120px;" onchange="renderParentChart()"></select>
+                </div>
+            </div>
+            <div style="height:300px"><canvas id="pScoreChart"></canvas></div>
+        </div>
+        
+        <div class="bg-white p-4 rounded-4 shadow-sm border mb-4 d-flex justify-content-between align-items-center fade-in">
+            <div class="ps-2">
+                <h5 class="fw-bold m-0 text-primary"><i class="bi bi-chat-dots-fill me-2"></i>家校沟通</h5>
+                <small class="text-muted">向班主任发送消息，或查看沟通记录</small>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-secondary rounded-pill px-4" onclick="showParentMsgHistory()">查看记录</button>
+                <button class="btn btn-primary rounded-pill px-4" onclick="pSendMsg()">发送消息</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="pwdModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title fw-bold">修改密码</h5>
+                    <button class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">旧密码</label>
+                        <input type="password" class="form-control" id="old_pwd">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">新密码</label>
+                        <input type="password" class="form-control" id="new_pwd">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">确认新密码</label>
+                        <input type="password" class="form-control" id="confirm_pwd">
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button class="btn btn-primary w-100 rounded-3" onclick="submitChangePwd()">确认修改</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="commonModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content border-0 shadow"><div class="modal-header border-0 pb-0"><h5 class="modal-title fw-bold" id="m-title">详情</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body p-4" id="m-body"></div></div></div></div>
+    <div class="modal fade" id="editModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow"><div class="modal-header border-0"><h5 class="modal-title fw-bold">修改信息</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" id="edit_id"><input type="hidden" id="edit_type"><div class="mb-3" id="edit_field_1_wrap"><label class="form-label fw-bold small text-muted">内容/分数/状态</label><input type="text" class="form-control" id="edit_val_1"></div><div class="mb-3 d-none" id="edit_field_2_wrap"><label class="form-label fw-bold small text-muted">日期设置</label><input type="date" class="form-control" id="edit_val_2"></div></div><div class="modal-footer border-0"><button class="btn btn-primary w-100 rounded-3" onclick="submitEdit()">保存修改</button></div></div></div></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        const API_URL = 'http://127.0.0.1:5000/api';
+        let currentUser = null; let charts = {}; let pDataCache = null;
+        let currentScoreData = []; let parentScoreData = []; let msgModalInstance = null;
+        let existingExams = [];
+        let currentAttDate = new Date();
+
+        function forgetPwd() { alert("请联系学校教务处 电话：1145141919810"); }
+
+        function openChangePwdModal() {
+            document.getElementById('old_pwd').value = '';
+            document.getElementById('new_pwd').value = '';
+            document.getElementById('confirm_pwd').value = '';
+            new bootstrap.Modal(document.getElementById('pwdModal')).show();
+        }
+
+        async function submitChangePwd() {
+            const oldP = document.getElementById('old_pwd').value;
+            const newP = document.getElementById('new_pwd').value;
+            const cfmP = document.getElementById('confirm_pwd').value;
+
+            if(!oldP || !newP || !cfmP) return showToast("请填写完整", "error");
+            if(newP !== cfmP) return showToast("两次新密码输入不一致", "error");
+
+            try {
+                const res = await fetch(`${API_URL}/change_password`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        userID: currentUser.id,
+                        oldPwd: oldP,
+                        newPwd: newP
+                    })
+                });
+                const d = await res.json();
+                if(d.status === 'success') {
+                    alert("密码修改成功，请重新登录");
+                    location.reload();
+                } else {
+                    showToast(d.message, 'error');
+                }
+            } catch(e) {
+                showToast("系统错误", 'error');
+            }
+        }
+
+        function showToast(msg, type='success') {
+            const t = document.getElementById('liveToast');
+            document.getElementById('toastMsg').innerText = msg;
+            t.classList.remove('bg-primary', 'bg-danger');
+            t.classList.add(type === 'error' ? 'bg-danger' : 'bg-primary');
+            new bootstrap.Toast(t).show();
+        }
+
+        function initDates() {
+            const todayStr = new Date().toISOString().split('T')[0];
+            if(document.getElementById('hw_start_date')) document.getElementById('hw_start_date').value = todayStr;
+            if(document.getElementById('score_date')) document.getElementById('score_date').value = todayStr;
+            const tmr = new Date(); tmr.setDate(tmr.getDate() + 1);
+            if(document.getElementById('hw_due_date')) document.getElementById('hw_due_date').value = tmr.toISOString().split('T')[0];
+        }
+
+        async function doLogin() {
+            const uid=v('userID'); const pwd=v('password'); const role=v('role');
+            if(!uid||!pwd) return showToast("请输入账号密码", 'error');
+            try {
+                const res=await fetch(`${API_URL}/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userID:uid,password:pwd,role:role})});
+                const d=await res.json();
+                if(d.status==='success'){
+                    currentUser=d; document.getElementById('loginSection').classList.add('d-none');
+                    if(d.role==='教师'){
+                        document.getElementById('teacher-dashboard').classList.remove('d-none');
+                        document.getElementById('t-welcome').innerText=`你好, ${d.name}老师`;
+                        initTeacherData(); loadTeacherDashboardStats(); initDates(); checkMsgs(); 
+                    }else{
+                        document.getElementById('parent-dashboard').classList.remove('d-none');
+                        loadParentData(d.id);
+                    }
+                    showToast("登录成功");
+                }else showToast(d.message, 'error');
+            } catch(e){console.error(e); showToast("数据库连接失败", 'error');}
+        }
+
+        async function initTeacherData() {
+            try {
+                const res = await fetch(`${API_URL}/teacher/courses?teacherID=${currentUser.id}`);
+                const courses = await res.json();
+                ['hw_course_select','att_course_select','score_course_select','hw_filter_course','att_filter_course','score_filter_course'].forEach(id=>{
+                    const el=document.getElementById(id);
+                    if(el) el.innerHTML = el.options[0].outerHTML + courses.map(c=>`<option value="${c.id}" data-class="${c.class_id}">${c.name} (${c.class_id}班)</option>`).join('');
+                });
+                loadHomeworkList();
+            }catch(e){console.error(e);}
+        }
+
+        async function loadTeacherDashboardStats() {
+            const res = await fetch(`${API_URL}/teacher/dashboard_stats?teacherID=${currentUser.id}`);
+            const d = await res.json();
+            if(d.status === 'success') {
+                const dot = document.getElementById('bell-dot');
+                if(d.unread_msgs > 0) { dot.classList.remove('d-none'); dot.innerText = ""; } else dot.classList.add('d-none');
+                const wDiv = document.getElementById('warning-list');
+                if(d.warnings.length === 0) wDiv.innerHTML = '<p class="text-muted small text-center mt-4">暂无预警信息</p>';
+                else {
+                    wDiv.innerHTML = d.warnings.map(w => `<div class="warning-item"><div class="d-flex justify-content-between fw-bold"><span>${w.student}</span> <span class="text-danger">${w.score}</span></div><div class="small text-muted">${w.course} - ${w.exam}</div></div>`).join('');
+                }
+            }
+        }
+
+        async function loadStudents(sel) {
+            const cls = sel.options[sel.selectedIndex].getAttribute('data-class');
+            const tgt = document.getElementById(sel.id.replace('course','student'));
+            tgt.innerHTML='<option>加载中...</option>';
+            const res=await fetch(`${API_URL}/class/students?classID=${cls}`);
+            const d=await res.json();
+            tgt.innerHTML='<option disabled selected>请选择学生...</option>'+d.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+            if(sel.id === 'score_course_select') loadCourseExams(sel.value);
+        }
+
+        async function loadCourseExams(courseId) {
+            const res = await fetch(`${API_URL}/course/exams?courseID=${courseId}`);
+            existingExams = await res.json();
+            const dl = document.getElementById('exam_options');
+            dl.innerHTML = existingExams.map(e => `<option value="${e.name}">`).join('');
+        }
+
+        document.getElementById('score_exam').addEventListener('input', function() {
+            const val = this.value;
+            const match = existingExams.find(e => e.name === val);
+            if(match) document.getElementById('score_full').value = match.full;
+        });
+
+        async function postHomework() {
+            const cid=v('hw_course'); const content=v('hw_content');
+            const sDate = v('hw_start_date'); const eDate = v('hw_due_date');
+            if(!cid||!content||!sDate||!eDate) return showToast("请填写完整", 'error');
+            await doPost('/add_homework', {courseID:cid, content:content, assignDate:sDate, dueDate:eDate});
+            loadHomeworkList(); document.getElementById('hw_content').value=''; 
+        }
+
+        async function postAttendance() { await doPost('/add_attendance', {studentID:v('att_student'), courseID:v('att_course'), status:v('att_status'), date:today()}); loadClassAttendance(); }
+        async function postScore() { 
+            // 🟢 [修改] 获取日期并传给后端
+            const dateVal = v('score_date');
+            if (!dateVal) return showToast("请选择考试日期", 'error');
+            
+            // 🟢 [修改] 如果满分没填，默认为 100，防止报错
+            let fullVal = v('score_full');
+            if(!fullVal) fullVal = 100;
+
+            await doPost('/add_score', {
+                studentID:v('score_student'), 
+                courseID:v('score_course'), 
+                examName:v('score_exam'), 
+                score:v('score_val'), 
+                examDate: dateVal, 
+                fullScore: fullVal
+            }); 
+            loadClassScores(); loadTeacherDashboardStats(); 
+        }
+
+        async function loadHomeworkList() {
+            let url=`${API_URL}/homework?teacherID=${currentUser.id}`;
+            const cid=v('hw_filter_course'); if(cid) url+=`&courseID=${cid}`;
+            const res=await fetch(url); const d=await res.json();
+            document.getElementById('homeworkList').innerHTML=d.map(h=>`<tr><td>${h.作业ID}</td><td>${h.课程名称}</td><td>${h.作业内容}</td><td>${h.布置日期} ~ ${h.截止日期}</td><td><button class="btn btn-sm btn-link p-0" onclick="openEdit('homework', ${h.作业ID}, '${h.作业内容}', '${h.截止日期}')">修改</button><button class="btn btn-sm btn-link text-danger p-0 ms-2" onclick="doDelete('homework', ${h.作业ID})">删除</button></td></tr>`).join('');
+        }
+
+        async function loadClassAttendance() {
+            const cid=v('att_filter_course'); if(!cid) return;
+            const res=await fetch(`${API_URL}/course/attendance?courseID=${cid}`); const d=await res.json();
+            document.getElementById('attList').innerHTML=d.map(r=>`<tr><td>${r.date}</td><td>${r.name}</td><td>${r.status}</td><td><button class="btn btn-sm btn-link p-0" onclick="openEdit('attendance', ${r.id}, '${r.status}')">改</button><button class="btn btn-sm btn-link text-danger p-0 ms-1" onclick="doDelete('attendance', ${r.id})">删</button></td></tr>`).join('');
+            let s={'出勤':0,'缺勤':0,'迟到':0}; d.forEach(r=>s[r.status]=(s[r.status]||0)+1);
+            renderChart('attChart','pie',{labels:['出勤','缺勤','迟到'],datasets:[{data:[s['出勤'],s['缺勤'],s['迟到']],backgroundColor:['#10b981','#ef4444','#f59e0b']}]});
+        }
+
+        async function loadClassScores() {
+            const cid=v('score_filter_course'); if(!cid) return;
+            const res=await fetch(`${API_URL}/course/scores?courseID=${cid}`); currentScoreData = await res.json(); 
+            document.getElementById('scoreList').innerHTML=currentScoreData.map(r=>`<tr><td>${r.date}</td><td>${r.exam}</td><td>${r.name}</td><td>${r.score}/${r.full}</td><td><button class="btn btn-sm btn-link p-0" onclick="openEdit('score', ${r.id}, '${r.score}', '${r.date}')">改</button><button class="btn btn-sm btn-link text-danger p-0 ms-1" onclick="doDelete('score', ${r.id})">删</button></td></tr>`).join('');
+            const exams = [...new Set(currentScoreData.map(i => i.exam))];
+            const sel = document.getElementById('chart_exam_filter');
+            if(exams.length > 0) { sel.innerHTML = exams.map(e => `<option value="${e}">${e}</option>`).join(''); sel.value = exams[0]; updateScoreChart(); } 
+            else { sel.innerHTML = '<option disabled>无数据</option>'; renderChart('scoreDistChart','bar',{ data:{datasets:[]} }); }
+        }
+
+        function updateScoreChart() {
+            const examName = document.getElementById('chart_exam_filter').value;
+            const useScaled = document.getElementById('t_scaled').checked;
+            if(!examName) return;
+            let dataToUse = currentScoreData.filter(d => d.exam === examName);
+            let dist=[0,0,0,0]; 
+            dataToUse.forEach(r=>{
+                let val = useScaled ? (r.score / r.full * 100) : r.score;
+                if(val<60) dist[0]++; else if(val<75) dist[1]++; else if(val<90) dist[2]++; else dist[3]++;
+            });
+            renderChart('scoreDistChart','bar',{
+                labels:['不及格','及格','良好','优秀'],
+                datasets:[{label: useScaled?'人数 (折合百分制)':'人数 (原始分)', data:dist, backgroundColor:['#ef4444','#f59e0b','#3b82f6','#10b981']}],
+                options: { scales: { y: { ticks: { stepSize: 1, precision: 0 } } } }
+            });
+        }
+
+        async function loadParentData(pid) {
+            const res=await fetch(`${API_URL}/parent/dashboard?parentID=${pid}`); 
+            const d=await res.json();
+            if(d.status!=='success') return showToast(d.message, 'error');
+            pDataCache=d; parentScoreData = d.scores; 
+            
+            document.getElementById('p-name').innerText=d.parent_name; 
+            document.getElementById('p-student-name').innerText=d.student_info.name; 
+            
+            document.getElementById('p-student-info').innerText = d.student_info.class_name || `${d.student_info.class_id}班`;
+
+            document.getElementById('p-card-att').innerText=d.stats.att_rate; 
+            document.getElementById('p-card-hw').innerText=d.stats.hw_count+"项"; 
+            document.getElementById('p-card-score').innerText=d.stats.last_score+"分"; 
+            document.getElementById('p-card-comp').innerText=d.stats.comp_status;
+            const courseMap = new Map();
+            d.scores.forEach(s => { if (!courseMap.has(s.course_id)) courseMap.set(s.course_id, s.course_name); });
+            const sel = document.getElementById('p_score_filter');
+            let optionsHtml = '';
+            courseMap.forEach((name, id) => { optionsHtml += `<option value="${id}">${name}</option>`; });
+            sel.innerHTML = optionsHtml || '<option disabled>暂无成绩</option>';
+            if (courseMap.size > 0) sel.value = courseMap.keys().next().value; 
+            renderParentChart();
+        }
+
+        // 🟢 [修复] 修正图表排序与白线问题
+        function renderParentChart() {
+            const filterVal = document.getElementById('p_score_filter').value;
+            const useScaled = document.getElementById('p_scaled').checked;
+            if(!filterVal) return;
+            
+            // 🟢 关键：反转数组，使图表从旧到新 (Left -> Right)
+            // 这样 Chart.js 的 fill 渲染就不会因为倒序而出错（消除白线）
+            let dataToShow = [...parentScoreData].filter(s => s.course_id == filterVal).reverse();
+            
+            const labels = dataToShow.map(s => `${s.date.substring(5)} ${s.exam}`); 
+            
+            // 学生成绩
+            const studentData = dataToShow.map(s => {
+                let val = useScaled ? (s.score / s.full * 100) : s.score;
+                return parseFloat(val.toFixed(1));
+            });
+
+            // 班级平均分
+            const avgData = dataToShow.map(s => {
+                let val = s.class_avg;
+                if (useScaled && s.full > 0) val = (val / s.full * 100);
+                return parseFloat(val.toFixed(1));
+            });
+
+            renderChart('pScoreChart', 'line', {
+                labels: labels,
+                datasets: [
+                    { 
+                        label: useScaled?'我的成绩(折合)':'我的成绩(原始)', 
+                        data: studentData, 
+                        borderColor: '#4f46e5', 
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)', 
+                        // 🟢 使用 'origin' 填充，比 true 更稳定
+                        fill: 'origin', 
+                        tension: 0.3 
+                    },
+                    { 
+                        label: useScaled?'班级平均(折合)':'班级平均(原始)', 
+                        data: avgData, 
+                        borderColor: '#9ca3af', 
+                        backgroundColor: 'transparent', 
+                        borderDash: [5, 5], 
+                        tension: 0.3, 
+                        fill: false 
+                    }
+                ],
+                options: { 
+                    scales: { y: { ticks: { stepSize: 1, precision: 1 } } } 
+                }
+            });
+        }
+
+        function getMonday(d) {
+            d = new Date(d);
+            var day = d.getDay(), diff = d.getDate() - day + (day == 0 ? -6 : 1); 
+            return new Date(d.setDate(diff));
+        }
+        function changeAttWeek(offset) {
+            currentAttDate.setDate(currentAttDate.getDate() + (offset * 7));
+            renderAttInModal();
+        }
+        function renderAttInModal() {
+            const monday = getMonday(currentAttDate);
+            const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+            const sStr = monday.toISOString().split('T')[0];
+            const eStr = sunday.toISOString().split('T')[0];
+            
+            document.getElementById('att-week-range').innerText = `${sStr} ~ ${eStr}`;
+            const weekData = pDataCache.attendance.filter(r => r.date >= sStr && r.date <= eStr);
+            const tbody = document.getElementById('att-week-list');
+            
+            if(weekData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-4">本周暂无考勤数据</td></tr>';
+            } else {
+                tbody.innerHTML = weekData.map(r => {
+                    let clr = '';
+                    if (r.status === '出勤') clr = 'table-success text-success fw-bold';
+                    else if (r.status === '迟到') clr = 'table-warning text-warning fw-bold';
+                    else if (r.status === '缺勤') clr = 'table-danger text-danger fw-bold';
+                    return `<tr class="${clr}"><td>${r.date}</td><td>${r.course}</td><td>${r.status}</td></tr>`;
+                }).join('');
+            }
+        }
+        function renderScoreRows(data) {
+            if(data.length === 0) return '<tr><td colspan="4" class="text-center text-muted">暂无数据</td></tr>';
+            return data.map(r=>{
+                let fail = (r.score < r.full * 0.6) ? 'text-danger fw-bold' : 'text-primary fw-bold';
+                return `<tr><td>${r.date}</td><td>${r.exam}</td><td>${r.course_name}</td><td class="${fail}">${r.score}/${r.full}</td></tr>`;
+            }).join('');
+        }
+        function filterScoreList(courseName) {
+            const allData = pDataCache.scores;
+            const filtered = (courseName === 'all') ? allData : allData.filter(s => s.course_name === courseName);
+            document.getElementById('p-score-tbody').innerHTML = renderScoreRows(filtered);
+        }
+
+        function showPDetail(t) {
+            if (!msgModalInstance) msgModalInstance = new bootstrap.Modal(document.getElementById('commonModal'));
+            document.getElementById('m-title').innerText = "详情";
+            let h='', d=pDataCache;
+            
+            if(t==='att') {
+                currentAttDate = new Date(); 
+                h = `
+                <div class="d-flex justify-content-between align-items-center mb-3 bg-light p-2 rounded">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="changeAttWeek(-1)"><i class="bi bi-chevron-left"></i> 上周</button>
+                    <span class="fw-bold" id="att-week-range">加载中...</span>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="changeAttWeek(1)">下周 <i class="bi bi-chevron-right"></i></button>
+                </div>
+                <table class="table align-middle">
+                    <thead><tr><th>日期</th><th>课程</th><th>状态</th></tr></thead>
+                    <tbody id="att-week-list"></tbody>
+                </table>`;
+                document.getElementById('m-body').innerHTML=h;
+                renderAttInModal(); 
+            }
+            else if(t==='score') {
+                const courses = [...new Set(d.scores.map(s => s.course_name))];
+                const options = courses.map(c => `<option value="${c}">${c}</option>`).join('');
+                h = `
+                <div class="mb-3 d-flex align-items-center">
+                    <label class="me-2 fw-bold small text-muted">筛选学科:</label>
+                    <select class="form-select form-select-sm" style="width:150px" onchange="filterScoreList(this.value)">
+                        <option value="all">全部学科</option>
+                        ${options}
+                    </select>
+                </div>
+                <div style="max-height:400px; overflow-y:auto">
+                    <table class="table table-hover">
+                        <thead><tr><th>日期</th><th>考试</th><th>课程</th><th>分数/满分</th></tr></thead>
+                        <tbody id="p-score-tbody">${renderScoreRows(d.scores)}</tbody>
+                    </table>
+                </div>`;
+                document.getElementById('m-body').innerHTML=h;
+            }
+            else if(t==='hw') {
+                h = '<div class="list-group gap-2">'; if(d.homework.length === 0) h += '<div class="text-center text-muted p-4">暂无作业</div>';
+                d.homework.forEach(r => {
+                    const exp = r.is_expired ? 'expired' : '';
+                    h += `<div class="list-group-item hw-list-item ${exp} p-3 border-0 shadow-sm"><div class="d-flex justify-content-between align-items-center"><div><div class="fw-bold mb-1">${r.course}</div><div class="small">${r.content}</div></div><div class="text-end" style="min-width: 160px;"><span class="date-info small text-muted"><i class="bi bi-clock me-1"></i>${r.assign_date} ~ ${r.due_date}</span>${r.is_expired ? '<span class="expired-badge badge bg-secondary fw-normal">已截止</span>' : ''}</div></div></div>`;
+                }); h += '</div>';
+                document.getElementById('m-body').innerHTML=h;
+            }
+            else if(t==='comp') {
+                h=`<div class="text-center p-5"><h1 class="display-1 text-primary fw-bold">${d.stats.comp_val}</h1><p>综合评分</p><span class="badge bg-success fs-5">${d.stats.comp_status}</span></div>`;
+                document.getElementById('m-body').innerHTML=h;
+            }
+            
+            if(t !== 'att') msgModalInstance.show();
+            else msgModalInstance.show();
+        }
+
+        async function showParentMsgHistory() {
+            if (!msgModalInstance) msgModalInstance = new bootstrap.Modal(document.getElementById('commonModal'));
+            document.getElementById('m-title').innerText = "沟通记录历史";
+            try {
+                const res = await fetch(`${API_URL}/parent/messages?parentID=${currentUser.id}`);
+                const list = await res.json();
+                let h = '<div class="list-group list-group-flush">';
+                if(!list || list.length === 0) h += '<div class="p-4 text-center text-muted">暂无记录</div>';
+                else { 
+                    list.forEach(m => { 
+                        const badge = m.is_read ? '<span class="badge bg-success">老师已读</span>' : '<span class="badge bg-secondary">待阅读</span>'; 
+                        h += `<div class="list-group-item d-flex justify-content-between align-items-center py-3"><div><small class="text-muted d-block">${m.date}</small> <span class="fw-bold">已发起沟通请求</span></div>${badge}</div>`; 
+                    }); 
+                }
+                h += '</div>'; document.getElementById('m-body').innerHTML = h;
+            } catch (e) {
+                document.getElementById('m-body').innerHTML = '<div class="text-center text-danger p-4">加载失败，请重试</div>';
+            }
+            msgModalInstance.show();
+        }
+
+        async function doPost(u,d){const r=await fetch(API_URL+u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}); const j=await r.json(); showToast(j.message, j.status==='error'?'error':'success');}
+        async function doDelete(type, id) { if(!confirm("确定删除？")) return; await doPost('/delete_item', {type:type, id:id}); if(type==='homework') loadHomeworkList(); if(type==='attendance') loadClassAttendance(); if(type==='score') {loadClassScores(); loadTeacherDashboardStats();} }
+        function openEdit(type, id, val1, val2) {
+            const m = new bootstrap.Modal(document.getElementById('editModal'));
+            document.getElementById('edit_id').value = id; document.getElementById('edit_type').value = type;
+            const input1 = document.getElementById('edit_val_1'); const wrap2 = document.getElementById('edit_field_2_wrap');
+            input1.value = val1;
+            if (type === 'homework' || type === 'score') { wrap2.classList.remove('d-none'); document.getElementById('edit_val_2').value = val2; } 
+            else wrap2.classList.add('d-none');
+            m.show();
+        }
+        async function submitEdit() {
+            const type = document.getElementById('edit_type').value; let payload = {type:type, id:document.getElementById('edit_id').value};
+            const v1 = document.getElementById('edit_val_1').value; const v2 = document.getElementById('edit_val_2').value;
+            if(type === 'homework') { payload.content=v1; payload.dueDate=v2; } 
+            else if (type === 'score') { payload.score=v1; payload.date=v2; } 
+            else payload.status=v1;
+            await doPost('/update_item', payload); bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+            if(type==='homework') loadHomeworkList(); if(type==='attendance') loadClassAttendance(); if(type==='score') {loadClassScores(); loadTeacherDashboardStats();}
+        }
+        async function pSendMsg(){await doPost('/parent/send_msg',{pid:currentUser.id});}
+        function exportData(type) {
+            let cid = type === 'homework' ? document.getElementById('hw_filter_course').value : document.getElementById(type === 'attendance' ? 'att_filter_course' : 'score_filter_course').value;
+            window.open(`${API_URL}/teacher/export?teacherID=${currentUser.id}&type=${type}&courseID=${cid}`);
+        }
+        
+        async function checkMsgs(){
+            try {
+                const res = await fetch(`${API_URL}/teacher/messages?teacherID=${currentUser.id}`); 
+                const l = await res.json(); 
+                currentUser.msgs = l; 
+                if(l && l.length > 0) document.getElementById('bell-dot').classList.remove('d-none'); 
+                else document.getElementById('bell-dot').classList.add('d-none');
+            } catch(e) { console.error(e); }
+        }
+
+        async function showMsgModal() {
+            if (!msgModalInstance) msgModalInstance = new bootstrap.Modal(document.getElementById('commonModal'));
+            document.getElementById('m-title').innerText = "新沟通请求";
+            document.getElementById('m-body').innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">正在刷新消息...</p></div>';
+            msgModalInstance.show();
+            await checkMsgs();
+            const list = currentUser.msgs || [];
+            if (list.length === 0) {
+                document.getElementById('m-body').innerHTML = '<div class="text-center py-4 text-muted"><p class="mb-0">暂无新消息</p></div>';
+            } else {
+                document.getElementById('m-body').innerHTML = list.map(i => `
+                    <div class="alert alert-light border shadow-sm d-flex justify-content-between align-items-center mb-2 fade-in">
+                        <div>
+                            <div class="fw-bold text-primary">${i.text}</div>
+                            <small class="text-muted">${i.date}</small>
+                        </div>
+                        <button class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="readMsg(${i.id})">
+                            标记已读
+                        </button>
+                    </div>`).join('');
+            }
+        }
+
+        async function readMsg(id){
+            await fetch(`${API_URL}/teacher/read_msg`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({msgID:id})}); 
+            await checkMsgs(); 
+            showMsgModal(); 
+            loadTeacherDashboardStats();
+        }
+
+        function v(id){return document.getElementById(id).value;}
+        function today(){return new Date().toISOString().split('T')[0];}
+        function renderChart(id, t, d) {
+            if (charts[id]) charts[id].destroy();
+            const opts = d.options || {};
+            opts.maintainAspectRatio = false;
+            opts.plugins = { legend: { position: 'bottom' } };
+            charts[id] = new Chart(document.getElementById(id), { type: t, data: d, options: opts });
+        }
+        function showPanel(id,btn){document.querySelectorAll('[id^="t-panel"]').forEach(e=>e.classList.add('d-none')); document.getElementById('t-panel-'+id).classList.remove('d-none'); document.querySelectorAll('.nav-link').forEach(e=>e.classList.remove('active')); btn.classList.add('active');}
+    </script>
+</body>
+</html>
